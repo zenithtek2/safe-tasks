@@ -90,6 +90,9 @@ const userConfig: HardhatUserConfig = {
       ...sharedNetworkConfig,
       url: `https://bsc-dataseed.binance.org/`,
     },
+    sepolia: {
+      url: 'https://eth-sepolia.g.alchemy.com/v2/oGVWSMQrRZY7e30-O_qLNwaP-aHkaHei' 
+    }
   },
   namedAccounts: {
     deployer: 0,
