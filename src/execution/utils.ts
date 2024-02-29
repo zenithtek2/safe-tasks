@@ -2,7 +2,8 @@ import path from 'path'
 import fs from 'fs/promises'
 import fsSync from 'fs'
 import csvParser from "csv-parser"
-import { MetaTransaction } from '@gnosis.pm/safe-contracts'
+import { MetaTransaction, SafeTransaction } from '@gnosis.pm/safe-contracts'
+import { BigNumber, BigNumberish, Contract, ethers } from 'ethers'
 
 const cliCacheDir = "cli_cache"
 
@@ -56,3 +57,41 @@ export const readCsv = async<T>(file: string): Promise<T[]> => new Promise((reso
         .on("error", (err) => { reject(err) })
         .on("end", () => { resolve(results)})
 })
+
+export const buildSafeTransaction2 = (template: {
+    to: string, value?: BigNumber | number | string, data?: string, operation?: number, safeTxGas?: number | string,
+    baseGas?: number | string, gasPrice?: number | string, gasToken?: string, refundReceiver?: string, nonce: number
+}): SafeTransaction => {
+    return {
+        to: template.to,
+        value: template.value || 0,
+        data: template.data || "0x",
+        operation: template.operation || 0,
+        safeTxGas: template.safeTxGas || 0,
+        baseGas: template.baseGas || 0,
+        gasPrice: template.gasPrice || 0,
+        gasToken: template.gasToken || ethers.constants.AddressZero,
+        refundReceiver: template.refundReceiver || ethers.constants.AddressZero,
+        nonce: template.nonce
+    }
+}
+
+export const EIP712_SAFE_TX_TYPE = {
+    // "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
+    SafeTx: [
+        { type: "address", name: "to" },
+        { type: "uint256", name: "value" },
+        { type: "bytes", name: "data" },
+        { type: "uint8", name: "operation" },
+        { type: "uint256", name: "safeTxGas" },
+        { type: "uint256", name: "baseGas" },
+        { type: "uint256", name: "gasPrice" },
+        { type: "address", name: "gasToken" },
+        { type: "address", name: "refundReceiver" },
+        { type: "uint256", name: "nonce" },
+    ]
+}
+
+export const calculateSafeTransactionHash2 = (safe: Contract, safeTx: SafeTransaction, chainId: BigNumberish): string => {
+    return ethers.utils._TypedDataEncoder.hash({ verifyingContract: safe.address, chainId }, EIP712_SAFE_TX_TYPE, safeTx)
+}
