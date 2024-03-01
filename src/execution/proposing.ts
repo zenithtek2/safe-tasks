@@ -1,11 +1,11 @@
 import { task, types } from "hardhat/config";
 import { multiSendLib, safeSingleton } from "../contracts";
-import { buildMultiSendSafeTx, buildSafeTransaction, calculateSafeTransactionHash, SafeTransaction, MetaTransaction } from "@gnosis.pm/safe-contracts";
+import { buildMultiSendSafeTx, buildSafeTransaction, calculateSafeTransactionHash, SafeTransaction, MetaTransaction, safeSignMessage } from "@gnosis.pm/safe-contracts";
 import { parseEther } from "@ethersproject/units";
 import { getAddress, isHexString } from "ethers/lib/utils";
 import { calculateSafeTransactionHash2, proposalFile, readFromCliCache, writeToCliCache, writeTxBuilderJson } from "./utils";
 import { BigNumber } from "@ethersproject/bignumber";
-import { Contract, ethers } from "ethers";
+import { Contract, Signer, ethers } from "ethers";
 import fs from 'fs/promises'
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperationType } from "../utils/utils";
@@ -62,7 +62,6 @@ task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
     .addParam("to","address to transfer")
     .addParam("amount", "amount to transfer")
     .setAction(async (taskArgs, hre) => {
-        console.log(`Running on ${hre.network.name}`)
         const safe = await safeSingleton(hre, taskArgs.safeAddress)
         const nonce = await safe.nonce()
 
@@ -72,6 +71,7 @@ task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
         ];
 
         const [signer] = await hre.ethers.getSigners()
+
         const tokenContract = new ethers.Contract(taskArgs.token, abi, signer)
 
         const encodedData = await tokenContract.populateTransaction.transfer(
@@ -79,20 +79,11 @@ task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
             taskArgs.amount
           )
 
-            console.log(encodedData)
-
-        
         const tx = buildSafeTransaction({ to: taskArgs.to, value: parseEther(taskArgs.value).toString(), data: encodedData.data, nonce: nonce.toString(), operation: OperationType.CALL })
 
-            console.log('BUILDED SAFE TRANSACTION')
-            console.log(tx)
+        const chainId = (await safe.provider.getNetwork()).chainId
 
-
-            const chainId = (await safe.provider.getNetwork()).chainId
-
-        console.log('ENTERING TO CALCULATE SAFE TX HASH')
         const safeTxHash = await calcSafeTxHash(safe, tx, chainId, taskArgs.onChainHash)
-        console.log(safeTxHash)
 
         const proposal: SafeTxProposal = {
             safe: taskArgs.safeAddress,
@@ -100,12 +91,39 @@ task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
             safeTxHash,
             tx
         }
-        console.log('PROPOSAL')
-        console.log(proposal)
-        await writeToCliCache(proposalFile(safeTxHash), proposal)
+        
+        const signature = await signHash(signer, safeTxHash)
+        
+        let signatureParts = {
+            signature,
+            r: signature.data.substring(2, 66),
+            s: signature.data.substring(66, 130),
+            v: parseInt(signature.data.substring(130), 16)
+        };
+        
+        await writeToCliCache(proposalFile(safeTxHash), {
+            proposal: proposal,
+            signature: signatureParts
+        })
+        
         console.log(`Safe transaction hash: ${safeTxHash}`)
+
 });
 
+export const signHash = async (signer: Signer, hash: string): Promise<SafeSignature> => {
+    const typedDataHash = ethers.utils.arrayify(hash)
+    const signerAddress = await signer.getAddress()
+    return {
+        signer: signerAddress,
+        data: (await signer.signMessage(typedDataHash)).replace(/1b$/, "1f").replace(/1c$/, "20")
+    }
+}
+
+
+interface SafeSignature {
+    signer: string,
+    data: string
+}
 
 interface TxDescription {
     to: string,
