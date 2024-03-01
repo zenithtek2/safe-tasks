@@ -91,7 +91,12 @@ const userConfig: HardhatUserConfig = {
       url: `https://bsc-dataseed.binance.org/`,
     },
     sepolia: {
+      ...sharedNetworkConfig,
       url: 'https://eth-sepolia.g.alchemy.com/v2/oGVWSMQrRZY7e30-O_qLNwaP-aHkaHei' 
+    },
+    mumbai: {
+      ...sharedNetworkConfig,
+      url: 'https://polygon-mumbai.g.alchemy.com/v2/TTKk_0VIsmim3dihmzYZgnboVsLfvFjo',
     }
   },
   namedAccounts: {
