@@ -28,14 +28,17 @@ const calcSafeTxHash = async (safe: Contract, tx: SafeTransaction, chainId: numb
 }
 
 task("propose", "Create a Safe tx proposal json file")
-    .addPositionalParam("address", "Address or ENS name of the Safe to check", undefined, types.string)
+    .addParam("address", "Address or ENS name of the Safe to check", undefined, types.string)
     .addParam("to", "Address of the target", undefined, types.string)
-    .addParam("value", "Value in ETH", "0", types.string, true)
+    .addParam("value", "Value in ETH", "0.03", types.string, true)
     .addParam("data", "Data as hex string", "0x", types.string, true)
     .addFlag("delegatecall", "Indicator if tx should be executed as a delegatecall")
     .addFlag("onChainHash", "Get hash from chain (required for pre-1.3.0 version)")
     .setAction(async (taskArgs, hre) => {
         console.log(`Running on ${hre.network.name}`)
+
+        const [signer] = await hre.ethers.getSigners()
+
         const safe = await safeSingleton(hre, taskArgs.address)
         const safeAddress = await safe.resolvedAddress
         console.log(`Using Safe at ${safeAddress}`)
@@ -50,16 +53,29 @@ task("propose", "Create a Safe tx proposal json file")
             safeTxHash,
             tx
         }
-        await writeToCliCache(proposalFile(safeTxHash), proposal)
+        
+        const signature = await signHash(signer, safeTxHash)
+        
+        let signatureParts = {
+            signature,
+            r: signature.data.substring(2, 66),
+            s: signature.data.substring(66, 130),
+            v: parseInt(signature.data.substring(130), 16)
+        };
+
+        await writeToCliCache(proposalFile(safeTxHash), {
+            proposal: proposal,
+            signature: signatureParts
+        })
+
         console.log(`Safe transaction hash: ${safeTxHash}`)
     });
 
 
-task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
+task("propose-token-transfer-tx-info", "Create a Safe tx proposal json file")
     .addParam("safeAddress", "Address or ENS name of the Safe to check", undefined, types.string)
-    .addParam("token", "Address of the target", undefined, types.string)
-    .addParam("value", "Value in ETH", "0", types.string, true)
-    .addParam("to","address to transfer")
+    .addParam("token", "Address of the target token", undefined, types.string)
+    .addParam("to","address to transfer from the safe")
     .addParam("amount", "amount to transfer")
     .setAction(async (taskArgs, hre) => {
         const safe = await safeSingleton(hre, taskArgs.safeAddress)
@@ -71,7 +87,7 @@ task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
         ];
 
         const [signer] = await hre.ethers.getSigners()
-
+        
         const tokenContract = new ethers.Contract(taskArgs.token, abi, signer)
 
         const encodedData = await tokenContract.populateTransaction.transfer(
@@ -79,7 +95,7 @@ task("get-token-transfer-tx-info", "Create a Safe tx proposal json file")
             taskArgs.amount
           )
 
-        const tx = buildSafeTransaction({ to: taskArgs.to, value: parseEther(taskArgs.value).toString(), data: encodedData.data, nonce: nonce.toString(), operation: OperationType.CALL })
+        const tx = buildSafeTransaction({ to: taskArgs.token, value: parseEther("0").toString(), data: encodedData.data, nonce: nonce.toString(), operation: OperationType.CALL })
 
         const chainId = (await safe.provider.getNetwork()).chainId
 
