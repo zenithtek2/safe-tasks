@@ -98,11 +98,24 @@ Displays the transaction history of a Safe based on events
 ```bash
 yarn safe history <address>
 ```
+**************
 
-Security and Liability
-----------------------
-All contracts are WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+### Example usage for transferring eth to another user from safe
 
-License
--------
-All smart contracts are released under LGPL-3.0
+1. Propose transaction 
+
+```bash
+npx hardhat propose --address 0x3cD7BE48C4eFD950C438466474644b63Ba6Ef17E --to 0x153073310327caA6abB76F735d115E5c8bA1617B --network mumbai
+```
+
+2. Sign tx from another signer
+
+```bash
+npx hardhat sign-tx --address 0x3cD7BE48C4eFD950C438466474644b63Ba6Ef17E --to 0x153073310327caA6abB76F735d115E5c8bA1617B --network mumbai
+```
+
+3. Submit tx to safe directly
+
+```bash
+npx hardhat submit-tx --address 0x3cD7BE48C4eFD950C438466474644b63Ba6Ef17E --to 0x153073310327caA6abB76F735d115E5c8bA1617B --signatures 0x74bc638eb9890f27e1448f674fcd3eb07af2c27d7dd79231d87990f4bee7ace6526de609de4e6c895fb07daa95e6b4a8592de8d058701f6bcbfb6c5e4545858420,0xe9cf0be72087fe6d4b3a3219c126f1a6d455ffb90d6aaac5575f8328c6b6875c3585c7e0910dac189da7cc69a79295377005c911d0a28376d0f372739518686720 --network mumbai 
+```
