@@ -1,9 +1,9 @@
 import { task, types } from "hardhat/config";
 import { multiSendLib, safeSingleton } from "../contracts";
-import { buildMultiSendSafeTx, buildSafeTransaction, calculateSafeTransactionHash, SafeTransaction, MetaTransaction, safeSignMessage } from "@gnosis.pm/safe-contracts";
+import { buildMultiSendSafeTx, buildSafeTransaction, SafeTransaction, MetaTransaction } from "@gnosis.pm/safe-contracts";
 import { parseEther } from "@ethersproject/units";
 import { getAddress, isHexString } from "ethers/lib/utils";
-import { calculateSafeTransactionHash2, proposalFile, readFromCliCache, writeToCliCache, writeTxBuilderJson } from "./utils";
+import { _calculateSafeTransactionHash, proposalFile, readFromCliCache, writeToCliCache, writeTxBuilderJson } from "./utils";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract, Signer, ethers } from "ethers";
 import fs from 'fs/promises'
@@ -22,7 +22,7 @@ const calcSafeTxHash = async (safe: Contract, tx: SafeTransaction, chainId: numb
         tx.to, tx.value, tx.data, tx.operation, tx.safeTxGas, tx.baseGas, tx.gasPrice, tx.gasToken, tx.refundReceiver, tx.nonce
     )
     if (onChainOnly) return onChainHash
-    const offChainHash = calculateSafeTransactionHash2(safe, tx, chainId)
+    const offChainHash = _calculateSafeTransactionHash(safe, tx, chainId)
     if (onChainHash != offChainHash) throw Error("Unexpected hash! (For pre-1.3.0 version use --on-chain-hash)")
     return offChainHash
 }
