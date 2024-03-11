@@ -75,6 +75,6 @@ export const EIP712_SAFE_TX_TYPE = {
     ]
 }
 
-export const calculateSafeTransactionHash2 = (safe: Contract, safeTx: SafeTransaction, chainId: BigNumberish): string => {
+export const _calculateSafeTransactionHash = (safe: Contract, safeTx: SafeTransaction, chainId: BigNumberish): string => {
     return ethers.utils._TypedDataEncoder.hash({ verifyingContract: safe.address, chainId }, EIP712_SAFE_TX_TYPE, safeTx)
 }
